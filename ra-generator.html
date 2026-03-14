@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Generate Retainer Agreement — GeniusLaw</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', -apple-system, sans-serif; background: #1a1d2e; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+  @keyframes modalIn { from { opacity:0; transform:translateY(16px) scale(.97); } to { opacity:1; transform:translateY(0) scale(1); } }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes slideDown { from { opacity:0; max-height:0; } to { opacity:1; max-height:600px; } }
+  @keyframes toastIn { from { opacity:0; transform:translate(-50%,16px); } to { opacity:1; transform:translate(-50%,0); } }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.6; } }
+  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  @keyframes checkPop { 0% { transform: scale(0); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useMemo, useCallback } = React;
+
+// ============================================================
+// CONFIGURATION — Single source of truth for RA types
+// ============================================================
+const RA_TYPES = {
+  "CA Loss Mitigation": {
+    id: "ca_loss_mit",
+    templateFile: "AA2-CA-LOSS MIT",
+    templateFileNAD: "AA2-CA-LOSS MIT-NAD",
+    hasAddendum: true,
+    needsSubjectProperty: true,
+    needsStateSelector: false,
+    supportsPaymentSchedule: true,
+    supportsFlatFee: true,
+    supportsRate: false,
+    supportsCoBorrower: true,
+    supportsDisclosure: true,
+    disclosureLocked: true,
+    disclosureFile: "AA2-CA-DISCLOSURE-LoanMod",
+    category: "Loss Mitigation",
+    stateRestriction: "CA",
+  },
+  "CA ProSe + Loss Mitigation": {
+    id: "ca_prose_loss",
+    templateFile: "AA2-CA-ProSe and Loss Mit",
+    templateFileNAD: "AA2-CA-ProSe and Loss Mit-NAD",
+    hasAddendum: true,
+    needsSubjectProperty: true,
+    needsStateSelector: false,
+    supportsPaymentSchedule: true,
+    supportsFlatFee: true,
+    supportsRate: false,
+    supportsCoBorrower: true,
+    supportsDisclosure: true,
+    disclosureLocked: true,
+    disclosureFile: "AA2-CA-DISCLOSURE-LoanMod",
+    category: "Loss Mitigation",
+    stateRestriction: "CA",
+  },
+  "CA ProSe Only": {
+    id: "ca_prose_only",
+    templateFile: "AA2-Pro Se- Only- CA-complete",
+    templateFileNAD: "AA2-Pro Se- Only- CA-complete-NAD",
+    hasAddendum: true,
+    needsSubjectProperty: true,
+    needsStateSelector: false,
+    supportsPaymentSchedule: true,
+    supportsFlatFee: true,
+    supportsRate: false,
+    supportsCoBorrower: true,
+    supportsDisclosure: true,
+    disclosureLocked: false,
+    disclosureFile: "AA2-DISCLOSURE-Litigation-3rdParty",
+    category: "Litigation",
+    stateRestriction: "CA",
+  },
+  "Loss Mitigation Multi-State": {
+    id: "loss_mit_multi",
+    templateFile: "AA2-LOSSMIT-MULTISTATE",
+    templateFileNAD: "AA2-LOSSMIT-MULTISTATE-NAD",
+    hasAddendum: true,
+    needsSubjectProperty: true,
+    needsStateSelector: false,
+    supportsPaymentSchedule: true,
+    supportsFlatFee: true,
+    supportsRate: false,
+    supportsCoBorrower: true,
+    supportsDisclosure: true,
+    disclosureLocked: true,
+    disclosureFile: "AA2-MULTI-DISCLOSURE-LoanMod",
+    category: "Loss Mitigation",
+  },
+  "Multi-State ProSe + Loss Mitigation": {
+    id: "multi_prose_loss",
+    templateFile: "AA2-MULTI-ProSeandLossMit",
+    templateFileNAD: "AA2-MULTI-ProSeandLossMit-NAD",
+    hasAddendum: true,
+    needsSubjectProperty: true,
+    needsStateSelector: false,
+    supportsPaymentSchedule: true,
+    supportsFlatFee: true,
+    supportsRate: false,
+    supportsCoBorrower: true,
+    supportsDisclosure: true,
+    disclosureLocked: true,
+    disclosureFile: "AA2-MULTI-DISCLOSURE-LoanMod",
+    category: "Loss Mitigation",
+  },
+  "Full Service": {
+    id: "full_service",
+    templateFile: "AA2-FULLSERVICE",
+    templateFileNAD: "AA2-FULLSERVICE-NAD",
+    hasAddendum: true,
+    needsSubjectProperty: true,
+    needsStateSelector: false,
+    supportsPaymentSchedule: true,
+    supportsFlatFee: false,
+    supportsRate: false,
+    supportsCoBorrower: true,
+    supportsDisclosure: true,
+    disclosureLocked: false,
+    disclosureFile: "AA2-DISCLOSURE-Litigation-3rdParty",
+    category: "Litigation",
+  },
+  "Forbearance": {
+    id: "forbearance",
+    templateFile: "AA2-RA-FORBEARANCE",
+    templateFileNAD: "AA2-RA-FORBEARANCE-NAD",
+    hasAddendum: true,
+    needsSubjectProperty: true,
+    needsStateSelector: false,
+    supportsPaymentSchedule: true,
+    supportsFlatFee: true,
+    supportsRate: false,
+    supportsCoBorrower: true,
+    supportsDisclosure: true,
+    disclosureLocked: true,
+    disclosureFile: "AA2-CA-DISCLOSURE-LoanMod",
+    category: "Loss Mitigation",
+  },
+  "HOA": {
+    id: "hoa",
+    templateFile: "AA2-HOA-RA",
+    templateFileNAD: "AA2-HOA-RA-NAD",
+    hasAddendum: true,
+    needsSubjectProperty: true,
+    needsStateSelector: false,
+    supportsPaymentSchedule: true,
+    supportsFlatFee: true,
+    supportsRate: false,
+    supportsCoBorrower: true,
+    supportsDisclosure: false,
+    category: "Settlement",
+  },
+  "Private Lien": {
+    id: "private_lien",
+    templateFile: "AA2-PRIVATE LIEN",
+    templateFileNAD: "AA2-PRIVATE LIEN-NAD",
+    hasAddendum: true,
+    needsSubjectProperty: true,
+    needsStateSelector: false,
+    supportsPaymentSchedule: true,
+    supportsFlatFee: true,
+    supportsRate: false,
+    supportsCoBorrower: true,
+    supportsDisclosure: false,
+    category: "Settlement",
+  },
+  "Research": {
+    id: "research",
+    templateFile: "AA2-RA-RESEARCH",
+    templateFileNAD: "AA2-RA-RESEARCH-NAD",
+    hasAddendum: true,
+    needsSubjectProperty: true,
+    needsStateSelector: false,
+    supportsPaymentSchedule: true,
+    supportsFlatFee: true,
+    supportsRate: false,
+    supportsCoBorrower: true,
+    supportsDisclosure: false,
+    category: "Research",
+  },
+  "Surplus Funds": {
+    id: "surplus",
+    templateFile: "AA2-SURPLUS",
+    hasAddendum: true,
+    needsSubjectProperty: false,
+    needsStateSelector: true,
+    supportsPaymentSchedule: false,
+    supportsFlatFee: false,
+    supportsRate: true,
+    supportsCoBorrower: false,
+    supportsDisclosure: false,
+    category: "Surplus",
+  },
+  "SSDI": {
+    id: "ssdi",
+    templateFile: "SSDI RA",
+    hasAddendum: false,
+    needsSubjectProperty: false,
+    needsStateSelector: false,
+    supportsPaymentSchedule: false,
+    supportsFlatFee: false,
+    supportsRate: false,
+    supportsCoBorrower: false,
+    supportsDisclosure: false,
+    category: "SSDI",
+  },
+  "Payment Authorization": {
+    id: "payment_auth",
+    templateFile: "payment auth",
+    hasAddendum: false,
+    needsSubjectProperty: false,
+    needsStateSelector: false,
+    supportsPaymentSchedule: false,
+    supportsFlatFee: false,
+    supportsRate: false,
+    supportsCoBorrower: false,
+    supportsDisclosure: false,
+    category: "Other",
+  },
+};
+
+// ============================================================
+// ATTORNEY BY STATE — one attorney per state
+// ============================================================
+const ATTORNEY_BY_STATE = {
+  AL: "Adella Alexander", AK: "Adella Alexander", AZ: "Adella Alexander",
+  AR: "Adella Alexander", CA: "Adella Alexander", CO: "Adella Alexander",
+  CT: "Adella Alexander", DE: "Adella Alexander", FL: "Adella Alexander",
+  GA: "Adella Alexander", HI: "Adella Alexander", ID: "Adella Alexander",
+  IL: "Adella Alexander", IN: "Adella Alexander", IA: "Adella Alexander",
+  KS: "Adella Alexander", KY: "Adella Alexander", LA: "Adella Alexander",
+  ME: "Adella Alexander", MD: "Adella Alexander", MA: "Adella Alexander",
+  MI: "Adella Alexander", MN: "Adella Alexander", MS: "Adella Alexander",
+  MO: "Adella Alexander", MT: "Adella Alexander", NE: "Adella Alexander",
+  NV: "Adella Alexander", NH: "Adella Alexander", NJ: "Adella Alexander",
+  NM: "Adella Alexander", NY: "Adella Alexander", NC: "Adella Alexander",
+  ND: "Adella Alexander", OH: "Adella Alexander", OK: "Adella Alexander",
+  OR: "Adella Alexander", PA: "Adella Alexander", RI: "Adella Alexander",
+  SC: "Adella Alexander", SD: "Adella Alexander", TN: "Adella Alexander",
+  TX: "Adella Alexander", UT: "Adella Alexander", VT: "Adella Alexander",
+  VA: "Adella Alexander", WA: "Adella Alexander", WV: "Adella Alexander",
+  WI: "Adella Alexander", WY: "Adella Alexander", DC: "Adella Alexander",
+};
+
+const US_STATES = [
+  "AL","AK","AZ","AR","CA","CO","CT","DE","DC","FL","GA","HI","ID","IL","IN",
+  "IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH",
+  "NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT",
+  "VT","VA","WA","WV","WI","WY"
+];
+
+const STATE_NAMES = {
+  AL:"Alabama",AK:"Alaska",AZ:"Arizona",AR:"Arkansas",CA:"California",CO:"Colorado",
+  CT:"Connecticut",DE:"Delaware",DC:"District of Columbia",FL:"Florida",GA:"Georgia",
+  HI:"Hawaii",ID:"Idaho",IL:"Illinois",IN:"Indiana",IA:"Iowa",KS:"Kansas",KY:"Kentucky",
+  LA:"Louisiana",ME:"Maine",MD:"Maryland",MA:"Massachusetts",MI:"Michigan",MN:"Minnesota",
+  MS:"Mississippi",MO:"Missouri",MT:"Montana",NE:"Nebraska",NV:"Nevada",NH:"New Hampshire",
+  NJ:"New Jersey",NM:"New Mexico",NY:"New York",NC:"North Carolina",ND:"North Dakota",
+  OH:"Ohio",OK:"Oklahoma",OR:"Oregon",PA:"Pennsylvania",RI:"Rhode Island",SC:"South Carolina",
+  SD:"South Dakota",TN:"Tennessee",TX:"Texas",UT:"Utah",VT:"Vermont",VA:"Virginia",
+  WA:"Washington",WV:"West Virginia",WI:"Wisconsin",WY:"Wyoming"
+};
+
+// ============================================================
+// MOCK CLIENT DATA
+// ============================================================
+const MOCK_CLIENTS = [
+  { id: "c1", name: "Jennifer Adams", email: "jadams@email.com", phone: "(602) 555-0142", property: "890 Cactus Way, Phoenix, AZ 85001", propertyState: "AZ", matterState: "AZ", lender: "PennyMac", loanNumber: "PMC-2024-88712" },
+  { id: "c2", name: "Angela Young", email: "ayoung@email.com", phone: "(213) 555-0198", property: "1420 Sunset Blvd, Los Angeles, CA 90028", propertyState: "CA", matterState: "CA", lender: "Wells Fargo", loanNumber: "WF-2023-44291" },
+  { id: "c3", name: "Tony Curtis", email: "tcurtis@email.com", phone: "(512) 555-0167", property: "3201 Live Oak Dr, Austin, TX 78704", propertyState: "TX", matterState: "TX", lender: "Chase", loanNumber: "CHS-2024-77103" },
+  { id: "c4", name: "Paul Holden", email: "pholden@email.com", phone: "(305) 555-0133", property: "780 Ocean Dr, Miami, FL 33139", propertyState: "FL", matterState: "FL", lender: "Bank of America", loanNumber: "BOA-2023-55820" },
+  { id: "c5", name: "Latifah Anderson", email: "landerson@email.com", phone: "(916) 555-0155", property: "550 Capitol Mall, Sacramento, CA 95814", propertyState: "CA", matterState: "CA", lender: "US Bank", loanNumber: "USB-2024-33019" },
+  { id: "c6", name: "Ryan Thrall", email: "rthrall@email.com", phone: "(718) 555-0171", property: "45 Court St, Brooklyn, NY 11201", propertyState: "NY", matterState: "NY", lender: "Nationstar", loanNumber: "NS-2024-12087" },
+  { id: "c7", name: "Lindsey Berkey", email: "lberkey@email.com", phone: "(215) 555-0189", property: "1200 Market St, Philadelphia, PA 19107", propertyState: "PA", matterState: "PA", lender: "Ocwen", loanNumber: "OCW-2023-98234" },
+  { id: "c8", name: "Irma Gomez", email: "igomez@email.com", phone: "(323) 555-0144", property: "2900 W 8th St, Los Angeles, CA 90005", propertyState: "CA", matterState: "CA", lender: "SPS", loanNumber: "SPS-2024-66501" },
+  { id: "c9", name: "Marcus Williams", email: "mwilliams@email.com", phone: "(404) 555-0122", property: null, propertyState: null, matterState: "GA", lender: null, loanNumber: null },
+];
+
+// ============================================================
+// TOAST
+// ============================================================
+function Toast({ message, type, onDone }) {
+  useEffect(() => { const t = setTimeout(onDone, 3000); return () => clearTimeout(t); }, [onDone]);
+  const bg = type === "success" ? "#059669" : type === "error" ? "#dc2626" : "#2563eb";
+  const icon = type === "success" ? "✓" : type === "error" ? "✕" : "ℹ";
+  return (
+    <div style={{ position: "fixed", bottom: 32, left: "50%", transform: "translateX(-50%)", zIndex: 9999, padding: "14px 28px", background: bg, color: "#fff", borderRadius: 12, fontSize: 14, fontWeight: 600, fontFamily: "'DM Sans', sans-serif", boxShadow: "0 12px 40px rgba(0,0,0,0.3)", animation: "toastIn 0.3s ease", display: "flex", alignItems: "center", gap: 10 }}>
+      <span style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 }}>{icon}</span>
+      {message}
+    </div>
+  );
+}
+
+// ============================================================
+// TOGGLE SWITCH
+// ============================================================
+function Toggle({ checked, onChange, disabled }) {
+  return (
+    <button onClick={() => !disabled && onChange(!checked)} style={{
+      width: 44, height: 24, borderRadius: 12, border: "none", padding: 2, cursor: disabled ? "default" : "pointer",
+      background: checked ? "#2563eb" : "#d1d5db", transition: "background 0.2s", opacity: disabled ? 0.4 : 1,
+      display: "flex", alignItems: "center", flexShrink: 0,
+    }}>
+      <div style={{
+        width: 20, height: 20, borderRadius: "50%", background: "#fff",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.2)", transition: "transform 0.2s",
+        transform: checked ? "translateX(20px)" : "translateX(0)",
+      }} />
+    </button>
+  );
+}
+
+// ============================================================
+// FIELD COMPONENTS
+// ============================================================
+function FieldGroup({ label, hint, required, children, visible = true }) {
+  if (!visible) return null;
+  return (
+    <div style={{ marginBottom: 20, animation: "fadeIn 0.25s ease" }}>
+      <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "#374151", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 7 }}>
+        {label}
+        {required && <span style={{ color: "#dc2626", fontSize: 11 }}>*</span>}
+      </label>
+      {children}
+      {hint && <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 5, lineHeight: 1.4 }}>{hint}</div>}
+    </div>
+  );
+}
+
+const inputStyle = {
+  width: "100%", padding: "11px 14px", background: "#fff", border: "1.5px solid #e5e7eb",
+  borderRadius: 10, color: "#111827", fontSize: 14, fontWeight: 500, outline: "none",
+  fontFamily: "inherit", transition: "border-color 0.15s, box-shadow 0.15s",
+};
+const inputReadOnly = {
+  ...inputStyle, background: "#f9fafb", color: "#6b7280", cursor: "default", border: "1.5px solid #f0f0f0",
+};
+const selectStyle = {
+  ...inputStyle, cursor: "pointer", appearance: "none",
+  backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`,
+  backgroundRepeat: "no-repeat", backgroundPosition: "right 14px center",
+};
+
+// ============================================================
+// CLIENT SEARCH PICKER
+// ============================================================
+function ClientPicker({ selected, onSelect, stateFilter }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef(null);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    function click(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+    document.addEventListener("mousedown", click);
+    return () => document.removeEventListener("mousedown", click);
+  }, []);
+
+  useEffect(() => { if (open && inputRef.current) inputRef.current.focus(); }, [open]);
+
+  const availableClients = stateFilter
+    ? MOCK_CLIENTS.filter((c) => c.propertyState === stateFilter || c.matterState === stateFilter)
+    : MOCK_CLIENTS;
+
+  const filtered = availableClients.filter((c) =>
+    c.name.toLowerCase().includes(search.toLowerCase()) ||
+    c.email.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const client = MOCK_CLIENTS.find((c) => c.id === selected);
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button onClick={() => setOpen(!open)} style={{
+        ...selectStyle, display: "flex", alignItems: "center", gap: 10, textAlign: "left",
+        background: open ? "#eff6ff" : client ? "#fff" : "#fff",
+        borderColor: open ? "#2563eb" : client ? "#e5e7eb" : "#e5e7eb",
+      }}>
+        {client ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
+            <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#2563eb10", color: "#2563eb", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              {client.name.split(" ").map(w => w[0]).join("")}
+            </div>
+            <div>
+              <div style={{ fontWeight: 600, color: "#111827", lineHeight: 1.2 }}>{client.name}</div>
+              <div style={{ fontSize: 12, color: "#9ca3af", lineHeight: 1.2 }}>{client.email}</div>
+            </div>
+          </div>
+        ) : (
+          <span style={{ color: "#9ca3af", fontWeight: 400 }}>Search and select a client...</span>
+        )}
+      </button>
+
+      {open && (
+        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, marginTop: 6, zIndex: 100, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 12, boxShadow: "0 16px 48px rgba(0,0,0,0.12)", overflow: "hidden", animation: "fadeIn 0.15s" }}>
+          <div style={{ padding: "10px 12px", borderBottom: "1px solid #f3f4f6" }}>
+            <div style={{ position: "relative" }}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ position: "absolute", left: 10, top: 10, color: "#9ca3af" }}>
+                <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3" /><path d="M9.5 9.5L12.5 12.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              </svg>
+              <input ref={inputRef} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or email..."
+                style={{ width: "100%", padding: "8px 12px 8px 32px", border: "1.5px solid #e5e7eb", borderRadius: 8, fontSize: 13, outline: "none", color: "#374151", fontFamily: "inherit" }}
+                onFocus={(e) => e.target.style.borderColor = "#2563eb"} onBlur={(e) => e.target.style.borderColor = "#e5e7eb"} />
+            </div>
+          </div>
+          <div style={{ maxHeight: 260, overflowY: "auto" }}>
+            {filtered.map((c) => {
+              const isSel = selected === c.id;
+              return (
+                <button key={c.id} onClick={() => { onSelect(c.id); setOpen(false); setSearch(""); }}
+                  style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "10px 14px", background: isSel ? "#eff6ff" : "transparent", border: "none", cursor: "pointer", fontSize: 13, fontFamily: "inherit", textAlign: "left", borderLeft: isSel ? "3px solid #2563eb" : "3px solid transparent" }}
+                  onMouseEnter={(e) => { if (!isSel) e.currentTarget.style.background = "#f9fafb"; }}
+                  onMouseLeave={(e) => { if (!isSel) e.currentTarget.style.background = isSel ? "#eff6ff" : "transparent"; }}>
+                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: isSel ? "#2563eb15" : "#f3f4f6", color: isSel ? "#2563eb" : "#6b7280", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    {c.name.split(" ").map(w => w[0]).join("")}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: isSel ? 700 : 500, color: isSel ? "#2563eb" : "#374151", lineHeight: 1.3 }}>{c.name}</div>
+                    <div style={{ fontSize: 11, color: "#9ca3af", lineHeight: 1.3 }}>{c.email} · {c.phone}</div>
+                  </div>
+                  {c.propertyState && <span style={{ fontSize: 10, fontWeight: 600, color: "#6b7280", background: "#f3f4f6", padding: "2px 6px", borderRadius: 4 }}>{c.propertyState}</span>}
+                  {isSel && <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7L6 10L11 4" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                </button>
+              );
+            })}
+            {filtered.length === 0 && <div style={{ padding: "20px 14px", textAlign: "center", fontSize: 13, color: "#9ca3af" }}>No clients found</div>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// PAYMENT SCHEDULE BUILDER
+// ============================================================
+function PaymentSchedule({ payments, onChange }) {
+  function updatePayment(idx, field, value) {
+    const next = [...payments];
+    next[idx] = { ...next[idx], [field]: value };
+    // Clear the other field when switching type
+    if (field === "type") {
+      next[idx].date = "";
+      next[idx].event = "";
+    }
+    onChange(next);
+  }
+  function addPayment() {
+    onChange([...payments, { type: "date", date: "", event: "", amount: "" }]);
+  }
+  function removePayment(idx) {
+    onChange(payments.filter((_, i) => i !== idx));
+  }
+
+  const EVENT_OPTIONS = ["Upon Submission", "Prior to Filing", "Upon Approval", "Upon Completion"];
+
+  return (
+    <div style={{ animation: "fadeIn 0.25s ease" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "100px 1fr 110px 36px", gap: 4, marginBottom: 6 }}>
+        <div style={{ fontSize: 10, fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", paddingLeft: 2 }}>When</div>
+        <div style={{ fontSize: 10, fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", paddingLeft: 2 }}>Date / Event</div>
+        <div style={{ fontSize: 10, fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", paddingLeft: 2 }}>Amount</div>
+        <div></div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {payments.map((p, i) => (
+          <div key={i} style={{ display: "grid", gridTemplateColumns: "100px 1fr 110px 36px", gap: 8, alignItems: "center" }}>
+            {/* Type selector */}
+            <div style={{ display: "flex", borderRadius: 8, overflow: "hidden", border: "1.5px solid #e5e7eb" }}>
+              <button onClick={() => updatePayment(i, "type", "date")} style={{
+                flex: 1, padding: "8px 0", border: "none", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+                background: p.type === "date" ? "#2563eb" : "#fff",
+                color: p.type === "date" ? "#fff" : "#9ca3af",
+              }}>Date</button>
+              <button onClick={() => updatePayment(i, "type", "event")} style={{
+                flex: 1, padding: "8px 0", border: "none", borderLeft: "1px solid #e5e7eb", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+                background: p.type === "event" ? "#2563eb" : "#fff",
+                color: p.type === "event" ? "#fff" : "#9ca3af",
+              }}>Event</button>
+            </div>
+            {/* Date or Event input */}
+            {p.type === "date" ? (
+              <input type="date" value={p.date || ""} onChange={(e) => updatePayment(i, "date", e.target.value)}
+                style={{ ...inputStyle, padding: "9px 12px", fontSize: 13 }} />
+            ) : (
+              <select value={p.event || ""} onChange={(e) => updatePayment(i, "event", e.target.value)}
+                style={{ ...selectStyle, padding: "9px 12px", fontSize: 13, backgroundPosition: "right 10px center" }}>
+                <option value="">Select event...</option>
+                {EVENT_OPTIONS.map((ev) => <option key={ev} value={ev}>{ev}</option>)}
+              </select>
+            )}
+            {/* Amount */}
+            <div style={{ position: "relative" }}>
+              <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#9ca3af", fontSize: 13, fontWeight: 500 }}>$</span>
+              <input value={p.amount} onChange={(e) => updatePayment(i, "amount", e.target.value)} placeholder="0.00"
+                style={{ ...inputStyle, padding: "9px 12px 9px 24px", fontSize: 13 }} />
+            </div>
+            <button onClick={() => removePayment(i)} style={{ width: 32, height: 32, borderRadius: 8, border: "1px solid #fecaca", background: "#fef2f2", color: "#dc2626", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontFamily: "inherit" }}>×</button>
+          </div>
+        ))}
+      </div>
+      <button onClick={addPayment} style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, padding: "8px 14px", background: "#f9fafb", border: "1.5px dashed #d1d5db", borderRadius: 8, color: "#6b7280", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 2.5V9.5M2.5 6H9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+        Add Payment
+      </button>
+    </div>
+  );
+}
+
+// ============================================================
+// GENERATION SUCCESS VIEW
+// ============================================================
+function GenerationSuccess({ raType, client, onClose, onGenAnother }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 40px", textAlign: "center", animation: "fadeIn 0.3s ease" }}>
+      <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#f0fdf4", border: "2px solid #bbf7d0", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24, animation: "checkPop 0.4s ease" }}>
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M9 16L14 21L23 11" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      </div>
+      <h2 style={{ fontSize: 22, fontWeight: 700, color: "#111827", marginBottom: 8 }}>Agreement Generated</h2>
+      <p style={{ fontSize: 14, color: "#6b7280", marginBottom: 6, lineHeight: 1.5 }}>
+        <strong>{raType}</strong> for <strong>{client}</strong>
+      </p>
+      <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 32 }}>
+        The document has been saved to the generation bucket and is ready to send.
+      </p>
+      <div style={{ display: "flex", gap: 10 }}>
+        <button onClick={onGenAnother} style={{ padding: "11px 24px", background: "#fff", border: "1.5px solid #d1d5db", borderRadius: 10, color: "#374151", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Generate Another</button>
+        <button onClick={onClose} style={{ padding: "11px 24px", background: "#2563eb", border: "none", borderRadius: 10, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 2px 8px rgba(37,99,235,0.25)" }}>Go to Send Agreement →</button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// MAIN POPUP
+// ============================================================
+function RAGeneratorPopup() {
+  // Core state
+  const [raType, setRaType] = useState("");
+  const [clientId, setClientId] = useState("");
+  const [selectedState, setSelectedState] = useState("");
+  const [addendum, setAddendum] = useState(false);
+  const [coBorrower, setCoBorrower] = useState(false);
+  const [coBorrowerName, setCoBorrowerName] = useState("");
+  const [flatFee, setFlatFee] = useState("");
+  const [rate, setRate] = useState("");
+  const [paymentScheduleOn, setPaymentScheduleOn] = useState(false);
+  const [payments, setPayments] = useState([{ type: "date", date: "", event: "", amount: "" }]);
+  const [generating, setGenerating] = useState(false);
+  const [generated, setGenerated] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [disclosure, setDisclosure] = useState(false);
+  const [thirdPartySale, setThirdPartySale] = useState(false);
+  const [saleDateOn, setSaleDateOn] = useState(false);
+  const [saleDate, setSaleDate] = useState("");
+
+  // Derived
+  const config = raType ? RA_TYPES[raType] : null;
+  const client = MOCK_CLIENTS.find((c) => c.id === clientId);
+
+  const effectiveState = useMemo(() => {
+    if (!config) return "";
+    if (config.stateRestriction) return config.stateRestriction;
+    if (config.needsStateSelector) return selectedState;
+    if (client?.propertyState) return client.propertyState;
+    if (client?.matterState) return client.matterState;
+    return "";
+  }, [config, selectedState, client]);
+
+  const attorney = effectiveState ? (ATTORNEY_BY_STATE[effectiveState] || "—") : "";
+
+  // Reset dependent fields when RA type changes
+  useEffect(() => {
+    setAddendum(false);
+    setCoBorrower(false);
+    setCoBorrowerName("");
+    setPaymentScheduleOn(false);
+    setSelectedState("");
+    setFlatFee("");
+    setRate("");
+    setClientId("");
+    setThirdPartySale(false);
+    setSaleDateOn(false);
+    setSaleDate("");
+    // Auto-enable and lock disclosure for loss mitigation types
+    const cfg = raType ? RA_TYPES[raType] : null;
+    if (cfg?.disclosureLocked) {
+      setDisclosure(true);
+    } else {
+      setDisclosure(false);
+    }
+  }, [raType]);
+
+  function showToast(msg, type) { setToast({ message: msg, type }); }
+
+  function handleGenerate() {
+    if (!raType) { showToast("Please select an RA type", "error"); return; }
+    if (!clientId) { showToast("Please select a client", "error"); return; }
+    if (config.needsStateSelector && !selectedState) { showToast("Please select a state", "error"); return; }
+    if (coBorrower && !coBorrowerName.trim()) { showToast("Please enter co-borrower name", "error"); return; }
+
+    setGenerating(true);
+    setTimeout(() => {
+      setGenerating(false);
+      setGenerated(true);
+    }, 1800);
+  }
+
+  function handleReset() {
+    setRaType(""); setClientId(""); setSelectedState(""); setAddendum(false);
+    setCoBorrower(false); setCoBorrowerName(""); setFlatFee(""); setRate("");
+    setPaymentScheduleOn(false); setPayments([{ type: "date", date: "", event: "", amount: "" }]);
+    setGenerated(false); setDisclosure(false); setThirdPartySale(false);
+    setSaleDateOn(false); setSaleDate("");
+  }
+
+  // Group RA types by category
+  const groupedTypes = useMemo(() => {
+    const groups = {};
+    Object.entries(RA_TYPES).forEach(([name, cfg]) => {
+      if (!groups[cfg.category]) groups[cfg.category] = [];
+      groups[cfg.category].push(name);
+    });
+    return groups;
+  }, []);
+
+  const canGenerate = raType && clientId && (!config?.needsStateSelector || selectedState) && (!coBorrower || coBorrowerName.trim());
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, fontFamily: "'DM Sans', -apple-system, sans-serif", backdropFilter: "blur(4px)" }}>
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
+
+      <div style={{ width: "92%", maxWidth: generated ? 560 : 820, height: generated ? "auto" : "92vh", maxHeight: "92vh", background: "#fff", borderRadius: 18, display: "flex", flexDirection: "column", boxShadow: "0 25px 80px rgba(0,0,0,0.18)", animation: "modalIn 0.3s ease", overflow: "hidden", transition: "max-width 0.3s ease" }}>
+
+        {/* HEADER */}
+        {!generated && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 28px", borderBottom: "1px solid #e5e7eb", flexShrink: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 2H11L14 5V16H4V2Z" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round" /><path d="M11 2V5H14" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /><path d="M7 10H11M7 13H10" stroke="#fff" strokeWidth="1.3" strokeLinecap="round" /></svg>
+              </div>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#111827", lineHeight: 1.2 }}>Generate Retainer Agreement</h2>
+                <p style={{ margin: 0, fontSize: 13, color: "#9ca3af" }}>Select type and client, review fields, then generate</p>
+              </div>
+            </div>
+            <button style={{ width: 34, height: 34, borderRadius: 8, border: "1px solid #e5e7eb", background: "#fff", color: "#6b7280", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3L11 11M11 3L3 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
+            </button>
+          </div>
+        )}
+
+        {/* SUCCESS VIEW */}
+        {generated && <GenerationSuccess raType={raType} client={client?.name} onClose={() => {}} onGenAnother={handleReset} />}
+
+        {/* GENERATING OVERLAY */}
+        {generating && (
+          <div style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.92)", zIndex: 50, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: 18, backdropFilter: "blur(2px)" }}>
+            <div style={{ width: 56, height: 56, borderRadius: "50%", border: "3px solid #e5e7eb", borderTopColor: "#2563eb", animation: "pulse 0.8s infinite", marginBottom: 20 }} />
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 6 }}>Generating Agreement...</div>
+            <div style={{ fontSize: 13, color: "#9ca3af" }}>Building {raType} for {client?.name}</div>
+            <div style={{ width: 200, height: 4, background: "#e5e7eb", borderRadius: 2, marginTop: 20, overflow: "hidden" }}>
+              <div style={{ height: "100%", borderRadius: 2, background: "linear-gradient(90deg, #2563eb, #7c3aed, #2563eb)", backgroundSize: "200% 100%", animation: "shimmer 1.5s infinite" }} />
+            </div>
+          </div>
+        )}
+
+        {/* BODY */}
+        {!generated && (
+          <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+
+            {/* LEFT: Form */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "24px 28px" }}>
+
+              {/* Step 1: RA Type */}
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: "50%", background: raType ? "#059669" : "#2563eb", color: "#fff", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {raType ? <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg> : "1"}
+                  </div>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>Select RA Type</span>
+                </div>
+                <select value={raType} onChange={(e) => setRaType(e.target.value)} style={selectStyle}>
+                  <option value="">Choose a retainer agreement type...</option>
+                  {Object.entries(groupedTypes).map(([cat, types]) => (
+                    <optgroup key={cat} label={cat}>
+                      {types.map((t) => <option key={t} value={t}>{t}</option>)}
+                    </optgroup>
+                  ))}
+                </select>
+                {config && (
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
+                    <span style={{ fontSize: 10, fontWeight: 600, padding: "3px 8px", borderRadius: 20, background: "#f3f4f6", color: "#6b7280" }}>{config.templateFile}</span>
+                    {config.hasAddendum && <span style={{ fontSize: 10, fontWeight: 600, padding: "3px 8px", borderRadius: 20, background: "#eff6ff", color: "#2563eb" }}>Addendum Available</span>}
+                    {config.supportsCoBorrower && <span style={{ fontSize: 10, fontWeight: 600, padding: "3px 8px", borderRadius: 20, background: "#faf5ff", color: "#7c3aed" }}>Co-Borrower</span>}
+                    {config.supportsDisclosure && <span style={{ fontSize: 10, fontWeight: 600, padding: "3px 8px", borderRadius: 20, background: "#fef3c7", color: "#d97706" }}>Disclosure</span>}
+                  </div>
+                )}
+              </div>
+
+              {/* Step 2: Client */}
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: "50%", background: clientId ? "#059669" : raType ? "#2563eb" : "#d1d5db", color: "#fff", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {clientId ? <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg> : "2"}
+                  </div>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: raType ? "#111827" : "#9ca3af" }}>Select Client</span>
+                </div>
+                <ClientPicker selected={clientId} onSelect={setClientId} stateFilter={config?.stateRestriction || null} />
+                {config?.stateRestriction && <div style={{ fontSize: 11, color: "#d97706", marginTop: 6, display: "flex", alignItems: "center", gap: 5 }}>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="#d97706" strokeWidth="1.2" /><path d="M6 4V6.5M6 8V8.01" stroke="#d97706" strokeWidth="1.2" strokeLinecap="round" /></svg>
+                  Only showing clients with {config.stateRestriction} properties
+                </div>}
+              </div>
+
+              {/* Step 3: Configure — only show after both selections */}
+              {raType && clientId && config && (
+                <div style={{ animation: "fadeIn 0.3s ease" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>3</div>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>Configure Agreement</span>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 20px" }}>
+                    {/* Client Name — always shown */}
+                    <FieldGroup label="Client Name" required>
+                      <input value={client?.name || ""} readOnly style={inputReadOnly} />
+                    </FieldGroup>
+
+                    {/* Subject Property */}
+                    <FieldGroup label="Subject Property" required visible={config.needsSubjectProperty}>
+                      <input value={client?.property || "N/A"} readOnly style={inputReadOnly} />
+                    </FieldGroup>
+
+                    {/* State Selector — Surplus only */}
+                    <FieldGroup label="State" required visible={config.needsStateSelector} hint="Required for Surplus. Determines attorney assignment.">
+                      <select value={selectedState} onChange={(e) => setSelectedState(e.target.value)} style={selectStyle}>
+                        <option value="">Select state...</option>
+                        {US_STATES.map((s) => <option key={s} value={s}>{s} — {STATE_NAMES[s]}</option>)}
+                      </select>
+                    </FieldGroup>
+
+                    {/* Effective State — display only when not using selector */}
+                    <FieldGroup label="State (from property)" visible={!config.needsStateSelector && config.needsSubjectProperty}>
+                      <input value={effectiveState ? `${effectiveState} — ${STATE_NAMES[effectiveState] || ""}` : "—"} readOnly style={inputReadOnly} />
+                    </FieldGroup>
+
+                    {/* Attorney */}
+                    <FieldGroup label="Attorney" hint="Auto-assigned by state. One attorney per state.">
+                      <input value={attorney || "Select state first"} readOnly style={inputReadOnly} />
+                    </FieldGroup>
+
+                    {/* Loan Number removed — entered by client via RA */}
+
+                    {/* Flat Fee */}
+                    <FieldGroup label="Flat Fee" visible={config.supportsFlatFee}>
+                      <div style={{ position: "relative" }}>
+                        <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#9ca3af", fontSize: 14, fontWeight: 500 }}>$</span>
+                        <input value={flatFee} onChange={(e) => setFlatFee(e.target.value)} placeholder="0.00"
+                          style={{ ...inputStyle, paddingLeft: 28 }}
+                          onFocus={(e) => { e.target.style.borderColor = "#2563eb"; e.target.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.08)"; }}
+                          onBlur={(e) => { e.target.style.borderColor = "#e5e7eb"; e.target.style.boxShadow = "none"; }} />
+                      </div>
+                    </FieldGroup>
+
+                    {/* Rate — Surplus only */}
+                    <FieldGroup label="Rate" visible={config.supportsRate}>
+                      <div style={{ position: "relative" }}>
+                        <input value={rate} onChange={(e) => setRate(e.target.value)} placeholder="Enter rate..."
+                          style={inputStyle}
+                          onFocus={(e) => { e.target.style.borderColor = "#2563eb"; e.target.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.08)"; }}
+                          onBlur={(e) => { e.target.style.borderColor = "#e5e7eb"; e.target.style.boxShadow = "none"; }} />
+                        <span style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "#9ca3af", fontSize: 12 }}>%</span>
+                      </div>
+                    </FieldGroup>
+                  </div>
+
+                  {/* TOGGLES SECTION */}
+                  <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 0 }}>
+
+                    {/* Addendum Toggle — shows payment schedule when ON */}
+                    {config.hasAddendum && (
+                      <div style={{ borderTop: "1px solid #f3f4f6" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0" }}>
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>Addendum</div>
+                            <div style={{ fontSize: 12, color: "#9ca3af" }}>Include addendum with payment schedule</div>
+                          </div>
+                          <Toggle checked={addendum} onChange={setAddendum} />
+                        </div>
+                        {addendum && config.supportsPaymentSchedule && (
+                          <div style={{ paddingBottom: 14, animation: "fadeIn 0.2s" }}>
+                            <PaymentSchedule payments={payments} onChange={setPayments} />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Co-Borrower Toggle */}
+                    {config.supportsCoBorrower && (
+                      <div style={{ borderTop: "1px solid #f3f4f6" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0" }}>
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>Co-Borrower</div>
+                            <div style={{ fontSize: 12, color: "#9ca3af" }}>Include a co-borrower on this agreement</div>
+                          </div>
+                          <Toggle checked={coBorrower} onChange={setCoBorrower} />
+                        </div>
+                        {coBorrower && (
+                          <div style={{ paddingBottom: 14, animation: "fadeIn 0.2s" }}>
+                            <input value={coBorrowerName} onChange={(e) => setCoBorrowerName(e.target.value)} placeholder="Co-borrower full name..."
+                              style={inputStyle}
+                              onFocus={(e) => { e.target.style.borderColor = "#2563eb"; e.target.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.08)"; }}
+                              onBlur={(e) => { e.target.style.borderColor = "#e5e7eb"; e.target.style.boxShadow = "none"; }} />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Disclosure Toggle — litigation & loss mit docs */}
+                    {config.supportsDisclosure && (
+                      <div style={{ borderTop: "1px solid #f3f4f6" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0" }}>
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>Disclosure</div>
+                            <div style={{ fontSize: 12, color: "#9ca3af" }}>
+                              {config.disclosureLocked
+                                ? "Disclosure is always included for this document type"
+                                : "Include disclosure details for litigation filings"}
+                            </div>
+                            {config.disclosureFile && disclosure && <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>Template: <span style={{ fontFamily: "monospace", fontSize: 10, color: "#9ca3af" }}>{config.disclosureFile}</span></div>}
+                          </div>
+                          <Toggle checked={disclosure} onChange={config.disclosureLocked ? () => {} : (v) => { setDisclosure(v); if (!v) { setThirdPartySale(false); setSaleDateOn(false); setSaleDate(""); } }} disabled={config.disclosureLocked} />
+                        </div>
+                        {/* Third Party Sale & Sale Date — litigation docs only (not locked/loss mit) */}
+                        {disclosure && !config.disclosureLocked && (
+                          <div style={{ paddingBottom: 14, paddingLeft: 16, borderLeft: "2px solid #e5e7eb", marginLeft: 4, animation: "fadeIn 0.2s" }}>
+                            {/* Third Party Sale */}
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0" }}>
+                              <div>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Third Party Sale?</div>
+                                <div style={{ fontSize: 11, color: "#9ca3af" }}>Property sold to a third party</div>
+                              </div>
+                              <Toggle checked={thirdPartySale} onChange={setThirdPartySale} />
+                            </div>
+                            {/* Sale Date */}
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderTop: "1px solid #f3f4f6" }}>
+                              <div>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Sale Date?</div>
+                                <div style={{ fontSize: 11, color: "#9ca3af" }}>Include a specific sale date</div>
+                              </div>
+                              <Toggle checked={saleDateOn} onChange={(v) => { setSaleDateOn(v); if (!v) setSaleDate(""); }} />
+                            </div>
+                            {saleDateOn && (
+                              <div style={{ paddingTop: 6, paddingBottom: 4, animation: "fadeIn 0.2s" }}>
+                                <input type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)}
+                                  style={{ ...inputStyle, padding: "9px 12px", fontSize: 13, maxWidth: 220 }}
+                                  onFocus={(e) => { e.target.style.borderColor = "#2563eb"; e.target.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.08)"; }}
+                                  onBlur={(e) => { e.target.style.borderColor = "#e5e7eb"; e.target.style.boxShadow = "none"; }} />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* RIGHT: Summary Sidebar */}
+            <div style={{ width: 280, flexShrink: 0, borderLeft: "1px solid #e5e7eb", background: "#fafbfc", overflowY: "auto", padding: "24px 22px", display: "flex", flexDirection: "column" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 16 }}>Generation Summary</div>
+
+              {/* RA Type */}
+              <SummaryRow label="RA Type" value={raType || "—"} accent={!!raType} />
+              <SummaryRow label="Template" value={config ? (addendum || !config.templateFileNAD ? config.templateFile : config.templateFileNAD) : "—"} small />
+              <SummaryDivider />
+
+              {/* Client */}
+              <SummaryRow label="Client" value={client?.name || "—"} accent={!!client} />
+              {client?.email && <SummaryRow label="Email" value={client.email} small />}
+              <SummaryDivider />
+
+              {/* State & Attorney */}
+              <SummaryRow label="State" value={effectiveState ? `${effectiveState} — ${STATE_NAMES[effectiveState] || ""}` : "—"} />
+              <SummaryRow label="Attorney" value={attorney || "—"} />
+              <SummaryDivider />
+
+              {/* Property */}
+              {config?.needsSubjectProperty && (
+                <>
+                  <SummaryRow label="Property" value={client?.property || "—"} small />
+                  <SummaryDivider />
+                </>
+              )}
+
+              {/* Fees */}
+              {config?.supportsFlatFee && <SummaryRow label="Flat Fee" value={flatFee ? `$${flatFee}` : "—"} />}
+              {config?.supportsRate && <SummaryRow label="Rate" value={rate ? `${rate}%` : "—"} />}
+
+              {/* Toggles */}
+              <div style={{ marginTop: "auto", paddingTop: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Options</div>
+                {config?.hasAddendum && <SummaryChip label={addendum ? "Addendum + Payments" : "Addendum"} active={addendum} />}
+                {config?.supportsCoBorrower && <SummaryChip label="Co-Borrower" active={coBorrower} />}
+                {config?.supportsDisclosure && <SummaryChip label={config.disclosureLocked ? "Disclosure (locked)" : "Disclosure"} active={disclosure} />}
+                {config?.supportsDisclosure && !config.disclosureLocked && disclosure && thirdPartySale && <SummaryChip label="Third Party Sale" active={true} />}
+                {config?.supportsDisclosure && !config.disclosureLocked && disclosure && saleDateOn && <SummaryChip label={saleDate ? `Sale Date: ${saleDate}` : "Sale Date"} active={true} />}
+                {!config && <div style={{ fontSize: 12, color: "#d1d5db", fontStyle: "italic" }}>Select an RA type to see options</div>}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* FOOTER */}
+        {!generated && (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 28px", borderTop: "1px solid #e5e7eb", background: "#fafbfc", flexShrink: 0 }}>
+            <div style={{ fontSize: 12, color: "#9ca3af" }}>
+              {raType && clientId ? "Ready to generate" : "Complete steps 1 & 2 to continue"}
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={handleReset} style={{ padding: "11px 22px", background: "#fff", border: "1px solid #d1d5db", borderRadius: 10, color: "#374151", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Reset</button>
+              <button onClick={handleGenerate} disabled={!canGenerate} style={{
+                padding: "11px 28px", border: "none", borderRadius: 10, color: "#fff", fontSize: 14, fontWeight: 700, cursor: canGenerate ? "pointer" : "default", fontFamily: "inherit",
+                background: canGenerate ? "linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)" : "#93c5fd",
+                boxShadow: canGenerate ? "0 2px 12px rgba(37,99,235,0.3)" : "none",
+                display: "flex", alignItems: "center", gap: 8, transition: "all 0.2s",
+              }}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 2H10L13 5V14H3V2Z" stroke="#fff" strokeWidth="1.3" strokeLinejoin="round" /><path d="M10 2V5H13" stroke="#fff" strokeWidth="1.3" strokeLinecap="round" /></svg>
+                Generate Agreement
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// SUMMARY SUB-COMPONENTS
+// ============================================================
+function SummaryRow({ label, value, accent, small }) {
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ fontSize: 10, fontWeight: 600, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: small ? 12 : 13, fontWeight: accent ? 700 : 500, color: accent ? "#2563eb" : value === "—" ? "#d1d5db" : "#374151", lineHeight: 1.4, wordBreak: "break-word" }}>{value}</div>
+    </div>
+  );
+}
+
+function SummaryDivider() {
+  return <div style={{ height: 1, background: "#e5e7eb", margin: "10px 0" }} />;
+}
+
+function SummaryChip({ label, active }) {
+  return (
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, marginBottom: 6, marginRight: 6,
+      background: active ? "#eff6ff" : "#f9fafb",
+      color: active ? "#2563eb" : "#9ca3af",
+      border: `1px solid ${active ? "#bfdbfe" : "#e5e7eb"}`,
+    }}>
+      <div style={{ width: 8, height: 8, borderRadius: "50%", background: active ? "#2563eb" : "#d1d5db" }} />
+      {label}
+    </div>
+  );
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+ReactDOM.createRoot(document.getElementById("root")).render(<RAGeneratorPopup />);
+</script>
+</body>
+</html>
